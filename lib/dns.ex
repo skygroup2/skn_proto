@@ -1,4 +1,4 @@
-defmodule DNS do
+defmodule DNSEx do
   def lookup(name, record \\ :a, timeout \\ 5000) do
     name = if is_binary(name), do: :erlang.binary_to_list(name), else: name
 
