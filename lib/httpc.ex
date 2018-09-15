@@ -59,19 +59,16 @@ defmodule HackneyEx do
     throw({:error, reason})
   end
 
-  def send_rest(method, url, body, headers, opts, retry \\ 0, max_retry \\ 1) do
+  def send_rest(method, url, body, headers, opts, retry \\ 0, max_retry \\ 0) do
     ret = HTTPoison.request(method, url, body, headers, opts)
 
     case ret do
       {:error, reason} ->
         if retry < max_retry do
-          Process.sleep(1000 * (retry + 1))
           send_rest(method, url, body, headers, opts, retry + 1, max_retry)
         else
-          Logger.error("no retry #{retry} #{inspect(reason)}")
           ret
         end
-
       _ ->
         ret
     end
