@@ -63,7 +63,7 @@ defmodule HackneyEx do
     ret = HTTPoison.request(method, url, body, headers, opts)
 
     case ret do
-      {:error, reason} ->
+      {:error, _reason} ->
         if retry < max_retry do
           send_rest(method, url, body, headers, opts, retry + 1, max_retry)
         else
