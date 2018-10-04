@@ -4,7 +4,16 @@ defmodule TcpEx do
   def connect(dhost, port, options) do
     host = if is_binary(dhost), do: :erlang.binary_to_list(dhost), else: dhost
     cond do
+      options[:remote_host] != nil ->
+        # remote_host, remote_port, (remote_transport), remote_proxy == [proxy, proxy_auth, (socks5_resolve)]
+        case :hackney_remote_connect.connect(host, port, options, @connect_timeout) do
+          {:ok, {_, socket}} ->
+            {:ok, socket}
+          exp ->
+            exp
+        end
       options[:socks5_host] != nil ->
+        # socks5_host, socks5_port, (socks5_transport), socks5_user, socks5_pass, (socks5_resolve)
         case :hackney_socks5.connect(host, port, options, @connect_timeout) do
           {:ok, {_, socket}} ->
             {:ok, socket}
