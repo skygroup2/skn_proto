@@ -19,6 +19,10 @@ defmodule HackneyEx do
     %{}
   end
 
+  def get_rest(response) when is_binary(response) do
+    Poison.decode!(response)
+  end
+
   def get_rest({:ok, response}) do
     case response.status_code do
       200 ->
