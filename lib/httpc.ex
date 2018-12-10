@@ -20,7 +20,7 @@ defmodule HackneyEx do
   end
 
   def get_rest(response) when is_binary(response) do
-    Poison.decode!(response)
+    Jason.decode!(response)
   end
 
   def get_rest({:ok, response}) do
@@ -31,7 +31,7 @@ defmodule HackneyEx do
         if uz == "" do
           %{}
         else
-          Poison.decode!(uz)
+          Jason.decode!(uz)
         end
 
       _ ->

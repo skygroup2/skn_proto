@@ -24,7 +24,7 @@ defmodule SknProto.MixProject do
       {:hackney, git: "https://github.com/undefine00/hackney.git", branch: "master", override: true},
       {:httpoison, "~> 1.2"},
       {:lager, "~> 3.6", override: true},
-      {:poison, "~> 3.1"}
+      {:jason, "~> 1.1"}
     ]
   end
 end
