@@ -22,6 +22,8 @@ defmodule SknProto.MixProject do
   defp deps do
     [
       {:hackney, git: "https://github.com/gskynet/hackney.git", branch: "master", override: true},
+      {:gun, git: "https://github.com/gskynet/gun.git", branch: "master"},
+      {:idna, "~> 6.0", override: true},
       {:httpoison, "~> 1.5"},
       {:lager, "~> 3.6", override: true},
       {:jason, "~> 1.1"}
