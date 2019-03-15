@@ -21,12 +21,7 @@ defmodule SknProto.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:hackney, git: "https://github.com/gskynet/hackney.git", branch: "master", override: true},
       {:gun, git: "https://github.com/gskynet/gun.git", branch: "master"},
-      {:httpoison, "~> 1.5"},
-      {:idna, "~> 6.0", override: true},
-      {:certifi, "~> 2.4", override: true},
-      {:ssl_verify_fun, "~> 1.1", override: true},
       {:lager, "~> 3.6", override: true},
       {:jason, "~> 1.1"}
     ]
