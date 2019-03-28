@@ -42,7 +42,7 @@ defmodule GunEx do
           case :gun.await_up(conn, Map.get(opts, :connect_timeout, 15000)) do
             {:ok, _protocols} ->
               if ref != nil, do: Process.put(ref, conn)
-              stream = :gun.request(conn, method, u.path, headers, body, opts)
+              stream = :gun.request(conn, method, u.raw_path, headers, body, opts)
               http_recv(conn, stream, ref, Map.get(opts, :recv_timeout, 10000))
             {:error, reason} ->
               :gun.shutdown(conn)
