@@ -36,6 +36,8 @@ defmodule GunEx do
       stream = :gun.request(conn, method, u.path, headers, body, opts)
       http_recv(conn, stream, ref, Map.get(opts, :recv_timeout, 10000))
     else
+      opts =
+        if u.scheme == :https, do: Map.merge(opts, %{transport: :tls}), else: opts
       case :gun.open(u.host, u.port, opts) do
         {:ok, conn} ->
 #          IO.inspect "#{method} #{url} => #{inspect conn}"
