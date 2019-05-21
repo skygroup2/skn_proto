@@ -62,7 +62,9 @@ defmodule GunEx do
     Process.demonitor(mref, [:flush])
     case resp do
       _ when ref == nil ->
-        :gun.close(conn)
+        if is_pid(conn) and Process.alive?(conn) do
+          :gun.shutdown(conn)
+        end
         :gun.flush(conn)
         resp
       {:error, _} ->
@@ -100,8 +102,9 @@ defmodule GunEx do
   def http_close(ref) do
     conn = Process.delete(ref)
     if is_pid(conn) and Process.alive?(conn) do
-      :gun.close(conn)
+      :gun.shutdown(conn)
     end
+    :gun.flush(conn)
   end
 
   def decode_gzip(response) do
