@@ -96,6 +96,7 @@ defmodule GunEx do
   defp http_format_error(reason) do
     case reason do
       :normal -> {:error, :closed}
+      :close -> {:error, :closed}
       {:error, _} -> reason
       _ -> {:error, reason}
     end
