@@ -117,7 +117,7 @@ defmodule GunEx do
         {:error, reason}
       {:gun_down, ^conn, _proto, reason, retry, _killed_stream, _unprocessed_stream} ->
         if retry > 0 do
-          {:retry, :retry}
+          {:error, :retry}
         else
           http_format_error(reason)
         end
