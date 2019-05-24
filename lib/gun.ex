@@ -33,62 +33,94 @@ defmodule GunEx do
     u = :gun_url.parse_url(url)
     conn = Process.get(ref)
     if is_pid(conn) and Process.alive?(conn) do
+      mref = Process.monitor(conn)
       stream = :gun.request(conn, method, u.path, headers, body, opts)
-      http_recv(conn, stream, ref, Map.get(opts, :recv_timeout, 10000))
+      case http_recv(conn, stream, ref, mref, Map.get(opts, :recv_timeout, 10000)) do
+        {:error, :retry} ->
+          http_await_make_request(conn, ref, mref, method, u.raw_path, headers, body, opts)
+        resp ->
+          resp
+      end
     else
       opts =
         if u.scheme == :https, do: Map.merge(opts, %{transport: :tls}), else: opts
       case :gun.open(u.host, u.port, opts) do
         {:ok, conn} ->
-#          IO.inspect "#{method} #{url} => #{inspect conn}"
-          case :gun.await_up(conn, Map.get(opts, :connect_timeout, 15000)) do
-            {:ok, _protocols} ->
-              if ref != nil, do: Process.put(ref, conn)
-              stream = :gun.request(conn, method, u.raw_path, headers, body, opts)
-              http_recv(conn, stream, ref, Map.get(opts, :recv_timeout, 10000))
-            {:error, reason} ->
-              :gun.shutdown(conn)
-              {:error, reason}
-          end
-        exp ->
-          exp
+          mref = Process.monitor(conn)
+          http_await_make_request(conn, ref, mref, method, u.raw_path, headers, body, opts)
+        resp ->
+          resp
       end
     end
   end
 
-  def http_recv(conn, stream, ref, timeout\\ 5000) do
-    mref = Process.monitor(conn)
-    resp = http_recv(conn, stream, mref, ref, timeout, %{status_code: 200, headers: [], body: "", reason: nil})
-    Process.demonitor(mref, [:flush])
-    case resp do
-      _ when ref == nil ->
-        if is_pid(conn) and Process.alive?(conn) do
-          :gun.shutdown(conn)
+  def http_await_make_request(conn, ref, mref, method, raw_path, headers, body, opts) do
+    case :gun.await_up(conn, Map.get(opts, :connect_timeout, 15000), mref) do
+      {:ok, _protocols} ->
+        if ref != nil, do: Process.put(ref, conn)
+        stream = :gun.request(conn, method, raw_path, headers, body, opts)
+        case http_recv(conn, stream, ref, mref, Map.get(opts, :recv_timeout, 10000)) do
+          {:error, :retry} ->
+            http_await_make_request(conn, ref, mref, method, raw_path, headers, body, opts)
+          resp ->
+            resp
         end
+      {:error, reason} ->
+        :gun.shutdown(conn)
         :gun.flush(conn)
-        resp
-      {:error, _} ->
-        http_close(ref)
-        resp
-      _ ->
-        resp
+        {:error, reason}
     end
   end
 
-  def http_recv(conn, stream, mref, ref, timeout, resp) do
+  def http_recv(conn, stream, ref, mref, timeout) do
+    resp = http_recv(conn, stream, ref, mref, timeout, %{status_code: 200, headers: [], body: "", reason: nil})
+    case resp do
+      {:error, :retry} ->
+        resp
+      {:error, _} ->
+        Process.demonitor(mref, [:flush])
+        http_close(ref, conn)
+        resp
+      _ ->
+        Process.demonitor(mref, [:flush])
+        if ref == nil do
+          :gun.shutdown(conn)
+          :gun.flush(conn)
+          resp
+        else
+          resp
+        end
+    end
+  end
+
+  defp http_format_error(reason) do
+    case reason do
+      :normal -> {:error, :closed}
+      {:error, _} -> reason
+      _ -> {:error, reason}
+    end
+  end
+
+  def http_recv(conn, stream, ref, mref, timeout, resp) do
     receive do
       {:gun_response, ^conn, ^stream, :fin, status, headers} ->
         Map.merge(resp, %{status_code: status, headers: headers})
       {:gun_response, ^conn, ^stream, :nofin, status, headers} ->
-        http_recv(conn, stream, mref, ref, timeout, Map.merge(resp, %{status_code: status, headers: headers}))
+        http_recv(conn, stream, ref, mref, timeout, Map.merge(resp, %{status_code: status, headers: headers}))
       {:gun_data, ^conn, ^stream, :fin, data} ->
         data1 = resp.body <> data
         %{resp| body: data1}
       {:gun_data, ^conn, ^stream, :nofin, data} ->
         data1 = resp.body <> data
-        http_recv(conn, stream, mref, ref, timeout, %{resp| body: data1})
+        http_recv(conn, stream, ref, mref, timeout, %{resp| body: data1})
       {:DOWN, ^mref, :process, ^conn, reason} ->
         {:error, reason}
+      {:gun_down, ^conn, _proto, reason, retry, _killed_stream, _unprocessed_stream} ->
+        if retry > 0 do
+          {:retry, :retry}
+        else
+          http_format_error(reason)
+        end
       {:gun_error, ^conn, ^stream, reason} ->
         {:error, reason}
       {:gun_error, ^conn, reason} ->
@@ -99,12 +131,13 @@ defmodule GunEx do
     end
   end
 
-  def http_close(ref) do
-    conn = Process.delete(ref)
-    if is_pid(conn) and Process.alive?(conn) do
-      :gun.shutdown(conn)
+  def http_close(ref, conn\\ nil) do
+    conn1 = Process.delete(ref)
+    conn2 = if conn1 != nil, do: conn1, else: conn
+    if is_pid(conn2) and Process.alive?(conn2) == true do
+      :gun.shutdown(conn2)
+      :gun.flush(conn2)
     end
-    :gun.flush(conn)
   end
 
   def decode_gzip(response) do
