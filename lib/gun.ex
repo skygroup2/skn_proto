@@ -34,7 +34,7 @@ defmodule GunEx do
     conn = Process.get(ref)
     if is_pid(conn) and Process.alive?(conn) do
       mref = Process.monitor(conn)
-      stream = :gun.request(conn, method, u.path, headers, body, opts)
+      stream = :gun.request(conn, method, u.raw_path, headers, body, opts)
       case http_recv(conn, stream, ref, mref, Map.get(opts, :recv_timeout, 20000)) do
         {:error, :retry} ->
           http_await_make_request(conn, ref, mref, method, u.raw_path, headers, body, opts)
