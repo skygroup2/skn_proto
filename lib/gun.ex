@@ -182,6 +182,19 @@ defmodule GunEx do
     throw({:error, reason})
   end
 
+  def get_header_body(%{status_code: code, headers: headers} = response) do
+    case code do
+      200 ->
+        {headers, decode_gzip(response)}
+      _ ->
+        throw({:error, response})
+    end
+  end
+
+  def get_header_body({:error, reason}) do
+    throw({:error, reason})
+  end
+
   def get_body(%{status_code: code} = response) do
     case code do
       200 ->
