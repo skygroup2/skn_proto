@@ -37,18 +37,14 @@ defmodule Protob2 do
     case protob2(data, skip, level) do
       {:return, rest} when level == 0 ->
         protob1(rest, group, roll, skip, level)
-
       {:return, rest} ->
         {:ok, Enum.reverse(group), rest}
-
       {:error, _} ->
         case roll do
           [{g, d} | _] ->
             {Enum.reverse(g), d}
-
           _ when level == 0 ->
             {[], data}
-
           _ ->
             {:error, {:roll, data}}
         end
@@ -57,15 +53,12 @@ defmodule Protob2 do
         case List.keyfind(group, vtag, 1) do
           nil ->
             protob1(rest, [v | group], roll, skip, level)
-
           {^vtype, _, _} ->
             protob1(rest, [v | group], roll, skip, level)
-
           _ ->
             case roll do
               [{g, d} | _] ->
                 {Enum.reverse(g), d}
-
               _ ->
                 {:error, {:roll, data}}
             end
@@ -84,15 +77,12 @@ defmodule Protob2 do
           case decode_varint(rest) do
             {:ok, ntag, rest} ->
               tag = (ntag <<< 4) + (tag &&& 0xF)
-
               case decode_varint(rest) do
                 {:ok, n, rest} ->
                   {{:varint, tag, n}, rest}
-
                 _ ->
                   {:error, {:varint, buf}}
               end
-
             _ ->
               {:error, {:varint, buf}}
           end
@@ -100,7 +90,6 @@ defmodule Protob2 do
           case decode_varint(rest) do
             {:ok, n, rest} ->
               {{:varint, tag, n}, rest}
-
             _ ->
               {:error, {:varint, buf}}
           end
@@ -112,15 +101,12 @@ defmodule Protob2 do
           case decode_varint(rest) do
             {:ok, ntag, rest} ->
               tag = (ntag <<< 4) + (tag &&& 0xF)
-
               case rest do
                 <<d::binary-size(8), rest::binary>> ->
                   {{:int64, tag, d}, rest}
-
                 _ ->
                   {:error, {:varint, buf}}
               end
-
             _ ->
               {:error, {:varint, buf}}
           end
@@ -128,7 +114,6 @@ defmodule Protob2 do
           case rest do
             <<d::binary-size(8), rest::binary>> ->
               {{:int64, tag, d}, rest}
-
             _ ->
               {:error, {:varint, buf}}
           end
@@ -140,7 +125,6 @@ defmodule Protob2 do
           case decode_varint(rest) do
             {:ok, ntag, rest} ->
               tag = (ntag <<< 4) + (tag &&& 0xF)
-
               case decode_varint(rest) do
                 {:ok, n, rest} ->
                   case rest do
@@ -150,11 +134,9 @@ defmodule Protob2 do
                     _ ->
                       {:error, {:binary, buf}}
                   end
-
                 _ ->
                   {:error, {:binary, buf}}
               end
-
             _ ->
               {:error, {:int64, buf}}
           end
@@ -164,11 +146,9 @@ defmodule Protob2 do
               case rest do
                 <<d::binary-size(n), rest::binary>> ->
                   {{:binary, tag, d}, rest}
-
                 _ ->
                   {:error, {:binary, buf}}
               end
-
             _ ->
               {:error, {:binary, buf}}
           end
@@ -180,15 +160,12 @@ defmodule Protob2 do
           case decode_varint(rest) do
             {:ok, ntag, rest} ->
               tag = (ntag <<< 4) + (tag &&& 0xF)
-
               case protob1(rest, [], [], skip, level + 1) do
                 {:ok, g, rest} ->
                   {{:group, tag, g}, rest}
-
                 _ ->
                   {:error, {:group, buf}}
               end
-
             _ ->
               {:error, {:group, buf}}
           end
@@ -196,7 +173,6 @@ defmodule Protob2 do
           case protob1(rest, [], [], skip, level + 1) do
             {:ok, g, rest} ->
               {{:group, tag, g}, rest}
-
             _ ->
               {:error, {:group, buf}}
           end
@@ -208,7 +184,6 @@ defmodule Protob2 do
           case decode_varint(rest) do
             {:ok, _, rest} ->
               {:return, rest}
-
             _ ->
               {:error, {:group, buf}}
           end
@@ -222,15 +197,12 @@ defmodule Protob2 do
           case decode_varint(rest) do
             {:ok, ntag, rest1} ->
               tag1 = (ntag <<< 4) + (tag &&& 0xF)
-
               case rest1 do
                 <<d::binary-size(4), rest::binary>> ->
                   {{:int32, tag1, d}, rest}
-
                 _ ->
                   {:error, {:int32, buf}}
               end
-
             _ ->
               {:error, {:int32, buf}}
           end
@@ -238,12 +210,11 @@ defmodule Protob2 do
           case rest do
             <<d::binary-size(4), rest::binary>> ->
               {{:int32, tag, d}, rest}
-
             _ ->
               {:error, {:int32, buf}}
           end
         end
-
+      # unsupported
       <<_tag::size(5), _opcode::size(3), _rest::binary>> = buf ->
         {:error, {:unknown, buf}}
     end
@@ -295,7 +266,6 @@ defmodule Protob2 do
           # IO.inspect {acc, encode_tag(tag, 5), n}
           acc <> encode_tag(tag, 5) <> n
       end
-
     encode(rest, acc)
   end
 
@@ -308,11 +278,11 @@ defmodule Protob2 do
     end
   end
 
-  def to_map(pb) do
+  def to_map(pb, recursive\\ true) do
     Enum.reduce(pb, %{}, fn {type, index, val}, acc ->
       val =
         case type do
-          :group ->
+          :group when recursive == true ->
             to_map(val)
           _ ->
             val
@@ -330,9 +300,9 @@ defmodule Protob2 do
     end)
   end
 
-  def get_tag_value(data, tag, default \\ nil) do
-    case List.keyfind(data, tag, 1) do
-      {_, _, value} -> value
+  def get_value(proto_data, tag_value, default \\ nil) when is_list(proto_data) do
+    case List.keyfind(proto_data, tag_value, 1) do
+      {_type, _tag, value} -> value
       _ -> default
     end
   end
