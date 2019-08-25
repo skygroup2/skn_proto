@@ -1,16 +1,15 @@
 defmodule Protob2 do
   import Bitwise
-  require Logger
 
-  def getvarint(a) do
-    getvarint(a, 0, 0)
+  def decode_varint(a) do
+    decode_varint(a, 0, 0)
   end
 
-  def getvarint(a, acc, count) do
+  def decode_varint(a, acc, count) do
     case a do
       <<1::integer-size(1), l::integer-size(7), rest::binary>> ->
         # IO.puts "continue flag on "
-        getvarint(rest, (l <<< (count * 7)) + acc, count + 1)
+        decode_varint(rest, (l <<< (count * 7)) + acc, count + 1)
 
       <<0::integer-size(1), l::integer-size(7), rest::binary>> ->
         # IO.puts "continue flag off "
@@ -82,11 +81,11 @@ defmodule Protob2 do
       # varint
       <<tag::size(5), 0::size(3), rest::binary>> = buf ->
         if (tag &&& 16) == 16 do
-          case getvarint(rest) do
+          case decode_varint(rest) do
             {:ok, ntag, rest} ->
               tag = (ntag <<< 4) + (tag &&& 0xF)
 
-              case getvarint(rest) do
+              case decode_varint(rest) do
                 {:ok, n, rest} ->
                   {{:varint, tag, n}, rest}
 
@@ -98,7 +97,7 @@ defmodule Protob2 do
               {:error, {:varint, buf}}
           end
         else
-          case getvarint(rest) do
+          case decode_varint(rest) do
             {:ok, n, rest} ->
               {{:varint, tag, n}, rest}
 
@@ -110,7 +109,7 @@ defmodule Protob2 do
       # int64
       <<tag::size(5), 1::size(3), rest::binary>> = buf ->
         if (tag &&& 16) == 16 do
-          case getvarint(rest) do
+          case decode_varint(rest) do
             {:ok, ntag, rest} ->
               tag = (ntag <<< 4) + (tag &&& 0xF)
 
@@ -138,11 +137,11 @@ defmodule Protob2 do
       # binary
       <<tag::size(5), 2::size(3), rest::binary>> = buf ->
         if (tag &&& 16) == 16 do
-          case getvarint(rest) do
+          case decode_varint(rest) do
             {:ok, ntag, rest} ->
               tag = (ntag <<< 4) + (tag &&& 0xF)
 
-              case getvarint(rest) do
+              case decode_varint(rest) do
                 {:ok, n, rest} ->
                   case rest do
                     <<d::binary-size(n), rest::binary>> ->
@@ -160,7 +159,7 @@ defmodule Protob2 do
               {:error, {:int64, buf}}
           end
         else
-          case getvarint(rest) do
+          case decode_varint(rest) do
             {:ok, n, rest} ->
               case rest do
                 <<d::binary-size(n), rest::binary>> ->
@@ -178,7 +177,7 @@ defmodule Protob2 do
       # group
       <<tag::size(5), 3::size(3), rest::binary>> = buf ->
         if (tag &&& 16) == 16 do
-          case getvarint(rest) do
+          case decode_varint(rest) do
             {:ok, ntag, rest} ->
               tag = (ntag <<< 4) + (tag &&& 0xF)
 
@@ -206,7 +205,7 @@ defmodule Protob2 do
       # group end
       <<tag::size(5), 4::size(3), rest::binary>> = buf ->
         if (tag &&& 16) == 16 do
-          case getvarint(rest) do
+          case decode_varint(rest) do
             {:ok, _, rest} ->
               {:return, rest}
 
@@ -220,7 +219,7 @@ defmodule Protob2 do
       # int32/float32
       <<tag::size(5), 5::size(3), rest::binary>> = buf ->
         if (tag &&& 16) == 16 do
-          case getvarint(rest) do
+          case decode_varint(rest) do
             {:ok, ntag, rest1} ->
               tag1 = (ntag <<< 4) + (tag &&& 0xF)
 
@@ -250,16 +249,16 @@ defmodule Protob2 do
     end
   end
 
-  def encvarint(num) do
-    encvarint(num, "")
+  def encode_varint(num) do
+    encode_varint(num, "")
   end
 
-  def encvarint(num, acc) do
+  def encode_varint(num, acc) do
     case num > 127 do
       true ->
         <<r::integer-size(1)-little, n::integer-size(7)-little>> = <<num::integer-size(8)-little>>
         acc = acc <> <<1::integer-size(1), n::integer-size(7)>>
-        encvarint((num >>> 8 <<< 1) + r, acc)
+        encode_varint((num >>> 8 <<< 1) + r, acc)
 
       false ->
         acc <> <<0::integer-size(1), num::integer-size(7)>>
@@ -278,61 +277,63 @@ defmodule Protob2 do
     acc =
       case data do
         {:varint, tag, n} ->
-          acc <> enctag(tag, 0) <> encvarint(n)
+          acc <> encode_tag(tag, 0) <> encode_varint(n)
 
         {:int64, tag, n} when is_integer(n) ->
-          acc <> enctag(tag, 1) <> <<n::size(64)>>
+          acc <> encode_tag(tag, 1) <> <<n::size(64)>>
 
         {:int64, tag, n} ->
-          acc <> enctag(tag, 1) <> n
+          acc <> encode_tag(tag, 1) <> n
 
         {:binary, tag, n} ->
-          acc <> enctag(tag, 2) <> encvarint(byte_size(n)) <> n
+          acc <> encode_tag(tag, 2) <> encode_varint(byte_size(n)) <> n
 
         {:group, tag, n} ->
-          acc <> enctag(tag, 3) <> encode(n) <> enctag(tag, 4)
+          acc <> encode_tag(tag, 3) <> encode(n) <> encode_tag(tag, 4)
 
         {:int32, tag, n} ->
-          # IO.inspect {acc, enctag(tag, 5), n}
-          acc <> enctag(tag, 5) <> n
+          # IO.inspect {acc, encode_tag(tag, 5), n}
+          acc <> encode_tag(tag, 5) <> n
       end
 
     encode(rest, acc)
   end
 
-  def enctag(tag, opcode) do
+  def encode_tag(tag, opcode) do
     if tag < 16 do
       <<tag::size(5), opcode::size(3)>>
     else
       btag = (tag &&& 0xF) ||| 0x10
-      <<btag::size(5), opcode::size(3)>> <> encvarint(tag >>> 4)
+      <<btag::size(5), opcode::size(3)>> <> encode_varint(tag >>> 4)
     end
   end
 
-  def totext(pb) do
+  def to_map(pb) do
     Enum.reduce(pb, %{}, fn {type, index, val}, acc ->
       val =
         case type do
           :group ->
-            totext(val)
-
+            to_map(val)
           _ ->
             val
         end
-
       acc =
         case Map.get(acc, index) do
           nil ->
             Map.put(acc, index, val)
-
           x when is_list(x) ->
             Map.put(acc, index, x ++ [val])
-
           x ->
             Map.put(acc, index, [x, val])
         end
-
       acc
     end)
+  end
+
+  def get_tag_value(data, tag, default \\ nil) do
+    case List.keyfind(data, tag, 1) do
+      {_, _, value} -> value
+      _ -> default
+    end
   end
 end
