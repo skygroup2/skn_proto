@@ -29,6 +29,16 @@ defmodule GunEx do
       - http2_opts => #{}
       - ws_opts => #{}
   """
+  def default_option(connect_timeout\\ 35000, recv_timeout\\ 20_000) do
+    %{
+      recv_timeout: recv_timeout,
+      connect_timeout: connect_timeout,
+      retry_timeout: 5000,
+      retry: 0,
+      transport_opts: [{:reuseaddr, true}, {:reuse_sessions, false}, {:linger, {false, 0}}, {:versions, [:"tlsv1.2"]}]
+    }
+  end
+
   def http_request(method, url, headers, body, opts, ref) do
     u = :gun_url.parse_url(url)
     conn = Process.get(ref)
