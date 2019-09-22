@@ -222,11 +222,15 @@ defmodule GunEx do
     TCP socket API
   """
   def connect(dhost, port, options) do
+    connect(dhost, port, options, @connect_timeout)
+  end
+
+  def connect(dhost, port, options, timeout) do
     host = if is_binary(dhost), do: :erlang.binary_to_list(dhost), else: dhost
     cond do
       options[:remote_host] != nil ->
         # remote_host, remote_port, (remote_transport), remote_proxy == [proxy, proxy_auth, (socks5_resolve)]
-        case :gun_remote_proxy.connect(host, port, options, @connect_timeout) do
+        case :gun_remote_proxy.connect(host, port, options, timeout) do
           {:ok, {_, socket}} ->
             {:ok, socket}
           exp ->
@@ -234,7 +238,7 @@ defmodule GunEx do
         end
       options[:socks5_host] != nil ->
         # socks5_host, socks5_port, (socks5_transport), socks5_user, socks5_pass, (socks5_resolve)
-        case :gun_socks5_proxy.connect(host, port, options, @connect_timeout) do
+        case :gun_socks5_proxy.connect(host, port, options, timeout) do
           {:ok, {_, socket}} ->
             {:ok, socket}
           exp ->
@@ -245,7 +249,7 @@ defmodule GunEx do
         portx = options[:connect_port]
         options = List.keyreplace options, :connect_host, 0, {:connect_host, host}
         options = List.keyreplace options, :connect_port, 0, {:connect_port, port}
-        case :gun_http_proxy.connect(hostx, portx, options, @connect_timeout) do
+        case :gun_http_proxy.connect(hostx, portx, options, timeout) do
           {:ok, {_, socket}} ->
             {:ok, socket}
           exp ->
@@ -256,7 +260,7 @@ defmodule GunEx do
           {:ok, v} -> v
           _ -> host
         end
-        :gen_tcp.connect(hostx, port, options, @connect_timeout)
+        :gen_tcp.connect(hostx, port, options, timeout)
     end
   end
 
