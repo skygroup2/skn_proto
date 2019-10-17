@@ -29,7 +29,7 @@ defmodule SknProto.MixProject do
   defp deps do
     [
       {:gun, git: "https://github.com/gskynet/gun.git", branch: "master"},
-      {:lager, "~> 3.6", override: true},
+      {:lager, "~> 3.8", override: true},
       {:jason, "~> 1.1"}
     ]
   end
