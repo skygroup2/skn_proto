@@ -159,8 +159,12 @@ defmodule GunEx do
     case List.keyfind(headers, "content-encoding", 0) do
       {"content-encoding", "gzip"} ->
         :zlib.gunzip(body)
-      {"content-encoding", _} ->
-        body
+      {"content-encoding", encoding} ->
+        if String.contains?(encoding, "gzip") == true do
+          :zlib.gunzip(body)
+        else
+          body
+        end
       nil ->
         body
     end
