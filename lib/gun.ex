@@ -155,7 +155,7 @@ defmodule GunEx do
     decode_gzip(response.headers, response.body)
   end
 
-  def decode_gzip(headers, body) do
+  def decode_gzip(headers, body) when is_binary(body) and byte_size(body) > 0 do
     case List.keyfind(headers, "content-encoding", 0) do
       {"content-encoding", "gzip"} ->
         :zlib.gunzip(body)
@@ -168,6 +168,10 @@ defmodule GunEx do
       nil ->
         body
     end
+  end
+
+  def decode_gzip(_headers, body) do
+    body
   end
 
   def get_rest(response) when is_binary(response) do
