@@ -57,6 +57,7 @@ defmodule GunEx do
       case :gun.open(u.host, u.port, opts) do
         {:ok, conn} ->
           mref = Process.monitor(conn)
+          Process.put(conn, u.raw_path)
           http_await_make_request(conn, ref, mref, method, u.raw_path, headers, body, opts)
         resp ->
           resp
@@ -76,8 +77,8 @@ defmodule GunEx do
             resp
         end
       {:error, reason} ->
-        :gun.shutdown(conn)
-        :gun.flush(conn)
+        Process.demonitor(mref, [:flush])
+        http_close(ref, conn)
         {:error, reason}
     end
   end
@@ -94,8 +95,7 @@ defmodule GunEx do
       _ ->
         Process.demonitor(mref, [:flush])
         if ref == nil do
-          :gun.shutdown(conn)
-          :gun.flush(conn)
+          http_close(ref, conn)
           resp
         else
           resp
@@ -144,7 +144,8 @@ defmodule GunEx do
 
   def http_close(ref, conn\\ nil) do
     conn1 = Process.delete(ref)
-    conn2 = if conn1 != nil, do: conn1, else: conn
+    conn2 = if is_pid(conn1), do: conn1, else: conn
+    Process.delete(conn2)
     if is_pid(conn2) and Process.alive?(conn2) == true do
       :gun.shutdown(conn2)
       :gun.flush(conn2)
