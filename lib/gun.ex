@@ -107,6 +107,7 @@ defmodule GunEx do
     case reason do
       :normal -> {:error, :closed}
       :close -> {:error, :closed}
+      {:error, {:down, {:shutdown, error}}} -> {:error, error}
       {:error, _} -> reason
       _ -> {:error, reason}
     end
