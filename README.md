@@ -1,3 +1,3 @@
-# gproto
+# skn_proto
 
-Gskynet common protocol
+Common library for protocol
