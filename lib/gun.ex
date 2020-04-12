@@ -141,7 +141,7 @@ defmodule GunEx do
           {:ok, v} -> v
           _ -> host
         end
-        :gen_tcp.connect(hostx, port, options, timeout)
+        :gen_tcp.connect(hostx, port, options[:tcp_opt], timeout)
     end
   end
 
