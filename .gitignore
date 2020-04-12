@@ -27,3 +27,5 @@ mix.lock
 log
 
 Mnesia.*
+
+.idea

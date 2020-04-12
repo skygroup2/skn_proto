@@ -6,23 +6,22 @@ defmodule GunEx do
       - retry: number of retries to connect
       - retry_timeout: non_neg_integer
       - connect_timeout: non_neg_integer
-      - recv_timeout: non_neg_integer
       - proxy:
-        + {:socks5, {127, 0, 0, 1}, 1080}
+        + {:socks5, {127, 0, 0, 1} / hostname, 1080}
+        + {:http, {127, 0, 0, 1} / hostname, 8080}
         + http://127.0.0.1:8080
-        + {:connect, {127, 0, 0, 1}, 8080}
-        + {{127, 0, 0, 1}, 8080}
       - proxy_auth: {u, p}
       - socks5_resolve: :local | :remote ( in case socks5)
       - protocols: [:http| :http2]
       - transport: tcp | tls
-      - transport_opts  => [gen_tcp:connect_option()] | [ssl:connect_option()]
+      - tcp_opts  => [gen_tcp:connect_option()]
+      - tls_opts  => [ssl:connect_option()]
       - http_opts => #{}
       - http2_opts => #{}
       - ws_opts => #{}
   """
-  def default_option(connect_timeout\\ 35000, recv_timeout\\ 20_000) do
-    Gun.default_option(connect_timeout, recv_timeout)
+  def default_option(connect_timeout\\ 35000) do
+    Gun.default_option(connect_timeout)
   end
 
   def http_request(method, url, headers, body, opts, ref) do
