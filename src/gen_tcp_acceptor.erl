@@ -1,5 +1,4 @@
 -module(gen_tcp_acceptor).
--compile([{parse_transform, lager_transform}]).
 
 -export([start_link/1,
   new_acceptor/1,
@@ -23,7 +22,7 @@ new_acceptor({Sup, Ips, Port, Opts, Parent}) when Port > 0 andalso Port < 65536 
           proc_lib:init_ack(Parent, {ok, self()}),
           acceptor_master(LSocket, Slaves);
         {error, Reason} ->
-          lager:error("bind on port ~p is failed: ~p", [Port, Reason]),
+          logger:error("bind on port ~p is failed: ~p", [Port, Reason]),
           proc_lib:init_ack(Parent, {error, Reason})
       end;
     true ->
@@ -44,7 +43,7 @@ acceptor_master(LSocket, Slaves) ->
 
 
 acceptor_master_wait(Slvs) ->
-  lager:debug("wait for ~p died", [Slvs]),
+  logger:debug("wait for ~p died", [Slvs]),
   receive
     {'EXIT', Slv1, _} ->
       NSlvs = lists:delete(Slv1, Slvs),
@@ -55,10 +54,10 @@ acceptor_master_wait(Slvs) ->
           acceptor_master_wait(NSlvs)
       end;
     Msg ->
-      lager:warning("drop unknown message ~p", [Msg]),
+      logger:warning("drop unknown message ~p", [Msg]),
       acceptor_master_wait(Slvs)
   after 3000 ->
-    lager:warning("wait for slave too long, force exiting"),
+    logger:warning("wait for slave too long, force exiting"),
     exit(normal)
   end.
 
@@ -78,26 +77,26 @@ acceptor_slave_init(Master, LSocket, Sup, Opts) ->
 acceptor_slave(Master, LSocket, Sup, Opts) ->
   case gen_tcp:accept(LSocket, ?ACCEPTOR_TIMEOUT) of
     {ok, Socket} ->
-      lager:debug("new socket connected from ~p", [peer_info(Socket)]),
+      logger:debug("new socket connected from ~p", [peer_info(Socket)]),
       case Sup:add_socket(Socket, Opts) of
         {ok, Pid} ->
-          lager:debug("~p create new controller ~p <-> ~p", [self(), Pid, Socket]),
+          logger:debug("~p create new controller ~p <-> ~p", [self(), Pid, Socket]),
           gen_tcp:controlling_process(Socket, Pid);
         _ ->
-          lager:error("can not create new controller => close new socket"),
+          logger:error("can not create new controller => close new socket"),
           gen_tcp:close(Socket)
       end,
       acceptor_slave_check(Master, LSocket, Sup, Opts);
     {error, timeout} ->
       acceptor_slave_check(Master, LSocket, Sup, Opts);
     {error, system_limit} ->
-      lager:notice("file descriptor reach to limit"),
+      logger:notice("file descriptor reach to limit"),
       acceptor_slave_check(Master, LSocket, Sup, Opts);
     {error, closed} ->
       Master ! {socket_closed, LSocket, self()},
       exit(normal);
     {error, Posix} ->
-      lager:error("error on socket ~p", [inet:format_error(Posix)]),
+      logger:error("error on socket ~p", [inet:format_error(Posix)]),
       acceptor_slave_check(Master, LSocket, Sup, Opts)
   end.
 
@@ -110,7 +109,7 @@ acceptor_slave_check(Master, LSocket, Sup, Opts) ->
       %% master process die
       exit(normal);
     Msg ->
-      lager:warning("drop unknown message ~p", [Msg]),
+      logger:warning("drop unknown message ~p", [Msg]),
       acceptor_slave(Master, LSocket, Sup, Opts)
   after 0 ->
     acceptor_slave(Master, LSocket, Sup, Opts)
@@ -122,7 +121,7 @@ reformat_ip([A | _] = SingleIp, In) when not is_list(A) ->
     {ok, Ipv4} ->
       [Ipv4 | In];
     _ ->
-      lager:error("Invalid IPv4 address ~p", [SingleIp]),
+      logger:error("Invalid IPv4 address ~p", [SingleIp]),
       In
   end;
 
@@ -132,7 +131,7 @@ reformat_ip(SingleIp, In) when is_tuple(SingleIp), size(SingleIp) == 4 ->
     [SingleIp | In]
   catch
     _:_ ->
-      lager:error("Invalid IPv4 address ~p", [SingleIp]),
+      logger:error("Invalid IPv4 address ~p", [SingleIp]),
       In
   end;
 
@@ -140,7 +139,7 @@ reformat_ip([SingleIp | Rem], In) ->
   In1 = case inet:parse_ipv4_address(SingleIp) of
           {ok, Ipv4} -> [Ipv4 | In];
           _ ->
-            lager:error("Invalid IPv4 address ~p", [SingleIp]),
+            logger:error("Invalid IPv4 address ~p", [SingleIp]),
             In
         end,
   reformat_ip(Rem, In1).

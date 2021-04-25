@@ -29,8 +29,7 @@ defmodule SknProto.MixProject do
   defp deps do
     [
       {:gun, git: "https://github.com/Subhuti20/gun.git", branch: "master"},
-      {:lager, "~> 3.8", override: true},
-      {:jason, "~> 1.1"}
+      {:jason, "~> 1.2"}
     ]
   end
 end
