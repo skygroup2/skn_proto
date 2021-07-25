@@ -28,7 +28,7 @@ defmodule SknProto.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:gun, git: "https://github.com/Subhuti20/gun.git", branch: "master"},
+      {:gun, git: "https://github.com/skygroup2/gun.git", branch: "master"},
       {:jason, "~> 1.2"}
     ]
   end
