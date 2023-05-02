@@ -1,117 +1,14 @@
 defmodule GunEx do
-  @connect_timeout 75000
-  @doc """
-    HTTP 1.1, HTTP 2.0 API
-    opts:
-      - retry: number of retries to connect
-      - retry_timeout: non_neg_integer
-      - connect_timeout: non_neg_integer
-      - proxy:
-        + {:socks5, {127, 0, 0, 1} / hostname, 1080}
-        + {:http, {127, 0, 0, 1} / hostname, 8080}
-        + http://127.0.0.1:8080
-      - proxy_auth: {u, p}
-      - socks5_resolve: :local | :remote ( in case socks5)
-      - protocols: [:http| :http2]
-      - transport: tcp | tls
-      - tcp_opts  => [gen_tcp:connect_option()]
-      - tls_opts  => [ssl:connect_option()]
-      - http_opts => #{}
-      - http2_opts => #{}
-      - ws_opts => #{}
+  @moduledoc """
+  `GunEx` provide api to make socket via proxy
   """
-  def default_option(connect_timeout\\ 35000) do
-    Gun.default_option(connect_timeout)
-  end
-
-  def http_request(method, url, headers, body, opts, ref) do
-    Gun.http_request(method, url, headers, body, opts, ref)
-  end
-
-  def http_close(ref, conn\\ nil) do
-    Gun.http_close(ref, conn)
-  end
-
-  def decode_gzip(response) do
-    decode_gzip(response.headers, response.body)
-  end
-
-  def decode_gzip(headers, body) when is_binary(body) and byte_size(body) > 0 do
-    case List.keyfind(headers, "content-encoding", 0) do
-      {"content-encoding", "gzip"} ->
-        :zlib.gunzip(body)
-      {"content-encoding", encoding} ->
-        if String.contains?(encoding, "gzip") == true do
-          :zlib.gunzip(body)
-        else
-          body
-        end
-      nil ->
-        body
-    end
-  end
-
-  def decode_gzip(_headers, body) do
-    body
-  end
-
-  def get_rest(response) when is_binary(response) do
-    if response == "" do
-      %{}
-    else
-      Jason.decode!(response)
-    end
-  end
-
-  def get_rest(%{status_code: code} = response) do
-    case code do
-      200 ->
-        uz = decode_gzip(response)
-        if uz == "" do
-          %{}
-        else
-          Jason.decode!(uz)
-        end
-      _ ->
-        throw({:error, response})
-    end
-  end
-
-  def get_rest({:error, reason}) do
-    throw({:error, reason})
-  end
-
-  def get_header_body(%{status_code: code, headers: headers} = response) do
-    case code do
-      200 ->
-        {headers, decode_gzip(response)}
-      _ ->
-        throw({:error, response})
-    end
-  end
-
-  def get_header_body({:error, reason}) do
-    throw({:error, reason})
-  end
-
-  def get_body(%{status_code: code} = response) do
-    case code do
-      200 ->
-        decode_gzip(response)
-      _ ->
-        throw({:error, response})
-    end
-  end
-
-  def get_body({:error, reason}) do
-    throw({:error, reason})
-  end
+  @default_connect_timeout 30_000
 
   @doc """
     TCP socket API
   """
-  def connect(dhost, port, options) do
-    connect(dhost, port, options, @connect_timeout)
+  def connect(dst_host, port, options) do
+    connect(dst_host, port, options, @default_connect_timeout)
   end
 
   def connect(dst_host, port, options, timeout) do
@@ -146,37 +43,37 @@ defmodule GunEx do
     end
   end
 
-  def send(sockfd, data) do
-    :gen_tcp.send(sockfd, data)
+  def send(sock_fd, data) do
+    :gen_tcp.send(sock_fd, data)
   end
 
-  def recv(sockfd, length) do
-    recv(sockfd, length, 30_000)
+  def recv(sock_fd, length) do
+    recv(sock_fd, length, 30_000)
   end
 
-  def recv(sockfd, length, timeout) do
-    :gen_tcp.recv(sockfd, length, timeout)
+  def recv(sock_fd, length, timeout) do
+    :gen_tcp.recv(sock_fd, length, timeout)
   end
 
-  def controlling_process(sockfd, pid) do
-    :gen_tcp.controlling_process(sockfd, pid)
+  def controlling_process(sock_fd, pid) do
+    :gen_tcp.controlling_process(sock_fd, pid)
   end
 
-  def peername(sockfd) do
-    :inet.peername(sockfd)
+  def peername(sock_fd) do
+    :inet.peername(sock_fd)
   end
 
-  def setopts(sockfd, opts) do
-    :inet.setopts(sockfd, opts)
+  def setopts(sock_fd, opts) do
+    :inet.setopts(sock_fd, opts)
   end
 
-  def shutdown(sockfd, how) do
-    :gen_tcp.shutdown(sockfd, how)
+  def shutdown(sock_fd, how) do
+    :gen_tcp.shutdown(sock_fd, how)
   end
 
-  def close(sockfd) do
-    if is_port(sockfd) do
-      :gen_tcp.close(sockfd)
+  def close(sock_fd) do
+    if is_port(sock_fd) do
+      :gen_tcp.close(sock_fd)
     end
   end
 end
