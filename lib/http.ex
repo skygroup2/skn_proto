@@ -175,28 +175,27 @@ defmodule HttpEx do
   end
 
   # cookies = [{name, %{domain: "", path: "", value: [{k, v}]}}]
-  def request(bot_id, method, url, headers, body, opt, redirect, all_cookies) do
-    request(bot_id, method, url, headers, body, opt, redirect, all_cookies, 1, &resolve_host/1)
+  def request(bot_id, method, url, headers, body, opt, redirect, all_cookies, conn_ref) do
+    request(bot_id, method, url, headers, body, opt, redirect, all_cookies, conn_ref, 1, &resolve_host/1)
   end
-  def request(bot_id, method, url, headers, body, opt, redirect, all_cookies, retry, resolve_fun) do
+  def request(bot_id, method, url, headers, body, opt, redirect, all_cookies, conn_ref, retry, resolve_fun) do
 #    Skn.Log.debug("bot #{bot_id} #{method}: #{url}")
     uri = URI.parse(url)
-    ref = make_ref(uri.host)
     headers = set_cookie(headers, all_cookies, uri)
-    resp = Gun.http_request(method, url, headers, body, opt, ref, resolve_fun)
+    resp = Gun.http_request(method, url, headers, body, opt, conn_ref, resolve_fun)
     case resp do
       {:error, reason} when reason in [:closed, :timeout] and retry > 0 ->
         # retry on error closed
-        Gun.http_close(ref, nil)
-        request(bot_id, method, url, headers, body, opt, redirect, all_cookies, retry - 1, resolve_fun)
+        Gun.http_close(conn_ref, nil)
+        request(bot_id, method, url, headers, body, opt, redirect, all_cookies, conn_ref, retry - 1, resolve_fun)
       %{status_code: 302, headers: resp_headers} when redirect > 0 ->
         {_, location} = List.keyfind(resp_headers, "location", 0)
         redirect_url = get_redirect_url(uri, location)
         new_cookie = save_cookie_from_header(all_cookies, resp_headers, uri)
         Skn.Log.debug("bot #{bot_id} redirect #{redirect_url}")
-        request(bot_id, "GET", redirect_url, headers, "", opt, redirect - 1, new_cookie, 1, resolve_fun)
+        request(bot_id, "GET", redirect_url, headers, "", opt, redirect - 1, new_cookie, nil, 1, resolve_fun)
       %{status_code: status_code, body: body, headers: resp_headers} ->
-        if status_code >= 400, do: Gun.http_close(ref, nil)
+        if status_code >= 400, do: Gun.http_close(conn_ref, nil)
         resp_body = decompress_data(body, :proplists.get_all_values("content-encoding", resp_headers))
         new_cookie = save_cookie_from_header(all_cookies, resp_headers, uri)
         {_, location} = List.keyfind(resp_headers, "location", 0, {"location", nil})
@@ -205,8 +204,6 @@ defmodule HttpEx do
         resp
     end
   end
-
-  def make_ref(host), do: host
 
   defp decompress_data(data, algorithms) do
     Enum.reduce(List.wrap(algorithms), data, &decompress_with_algorithm/2)
