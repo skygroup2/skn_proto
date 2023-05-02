@@ -29,7 +29,7 @@ defmodule SknProto.MixProject do
   defp deps do
     [
       {:gun, git: "https://github.com/skygroup2/gun.git", branch: "master"},
-      {:skn_lib, git: "https://github.com/skygroup2/skn_lib.git", branch: "main"},
+      {:skn_lib, git: "git@github.com:skygroup2/skn_lib.git", branch: "main"},
       {:jason, "~> 1.4"}
     ]
   end
