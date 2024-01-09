@@ -131,22 +131,20 @@ defmodule HttpEx do
   end
 
   def save_cookie(all_cookies, [{name, value}|_] = cookies, uri) do
-    max_age = case List.keyfind(cookies, "Max-Age", 0) do
+    max_age = case List.keyfind(cookies, "Max-Age", 0) || List.keyfind(cookies, "max-age", 0) do
       {_, v} -> String.to_integer(v)
       nil -> nil
     end
-    expires = case List.keyfind(cookies, "Expires", 0) do
-      {_, v} ->
-        ((:gun_http_date.parse_http_date(v) |> :calendar.datetime_to_gregorian_seconds()) - 62167219200) * 1000
-      nil ->
-        System.system_time(:millisecond) + 600_000
+    expires = case List.keyfind(cookies, "Expires", 0) || List.keyfind(cookies, "expires", 0) do
+      {_, v} -> ((:gun_http_date.parse_http_date(v) |> :calendar.datetime_to_gregorian_seconds()) - 62167219200) * 1000
+      nil -> nil
     end
     ts_now = System.system_time(:millisecond)
     all_cookies = Enum.filter(all_cookies, fn {_, x} -> x.expires > ts_now end)
     store_cookies = [{name, value}]
     if max_age > 0 do
-      {_, path} = List.keyfind(cookies, "Path", 0, {"Path", "/"})
-      {_, domain} = List.keyfind(cookies, "Domain", 0, {"Domain", uri.host})
+      {_, path} = List.keyfind(cookies, "Path", 0) || List.keyfind(cookies, "path", 0, {"Path", "/"})
+      {_, domain} = List.keyfind(cookies, "Domain", 0) || List.keyfind(cookies, "domain", 0, {"Domain", uri.host})
       List.keystore(all_cookies, name, 0, {name, %{domain: domain, path: path, expires: expires, value: store_cookies}})
     else
       List.keydelete(all_cookies, name, 0)
