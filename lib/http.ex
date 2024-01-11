@@ -120,7 +120,7 @@ defmodule HttpEx do
   end
 
   def match_cookie?(v, uri) do
-    String.contains?(uri.host, v.domain) and String.contains?(uri.path, v.path)
+    String.contains?(uri.host, v.domain) and String.contains?(uri.path || "/", v.path)
   end
 
   def get_cookie(all_cookies, uri) do
