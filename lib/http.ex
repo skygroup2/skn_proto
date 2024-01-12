@@ -8,6 +8,8 @@ defmodule HttpEx do
   defp check_add_proxy(proxy, default_opts) do
     proxy_strict = Process.get(:proxy_strict, false)
     case proxy do
+      :skip ->
+        default_opts
       nil ->
         if proxy_strict == false, do: default_opts, else: raise "NO_PROXY"
       %{proxy: nil} ->
