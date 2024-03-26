@@ -1,4 +1,4 @@
-defmodule GunEx do
+defmodule ProxyEx do
   @moduledoc """
   `GunEx` provide api to make socket via proxy
   """
@@ -40,40 +40,6 @@ defmodule GunEx do
           _ -> host
         end
         :gen_tcp.connect(host_n, port, options[:tcp_opt], timeout)
-    end
-  end
-
-  def send(sock_fd, data) do
-    :gen_tcp.send(sock_fd, data)
-  end
-
-  def recv(sock_fd, length) do
-    recv(sock_fd, length, 30_000)
-  end
-
-  def recv(sock_fd, length, timeout) do
-    :gen_tcp.recv(sock_fd, length, timeout)
-  end
-
-  def controlling_process(sock_fd, pid) do
-    :gen_tcp.controlling_process(sock_fd, pid)
-  end
-
-  def peername(sock_fd) do
-    :inet.peername(sock_fd)
-  end
-
-  def setopts(sock_fd, opts) do
-    :inet.setopts(sock_fd, opts)
-  end
-
-  def shutdown(sock_fd, how) do
-    :gen_tcp.shutdown(sock_fd, how)
-  end
-
-  def close(sock_fd) do
-    if is_port(sock_fd) do
-      :gen_tcp.close(sock_fd)
     end
   end
 end
