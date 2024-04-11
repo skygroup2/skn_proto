@@ -188,6 +188,13 @@ defmodule HttpEx do
         # retry on error closed
         Gun.http_close(conn_ref, nil)
         request(bot_id, method, url, headers, body, opt, redirect, all_cookies, conn_ref, retry - 1, resolve_fun)
+      {:error, {:goaway, :no_error, _}} ->
+        Gun.http_close(conn_ref, nil)
+        if retry > 0 do
+          request(bot_id, method, url, headers, body, opt, redirect, all_cookies, conn_ref, retry - 1, resolve_fun)
+        else
+          {:error, :closed}
+        end
       %{status_code: 302, headers: resp_headers} when redirect > 0 ->
         {_, location} = List.keyfind(resp_headers, "location", 0)
         redirect_url = get_redirect_url(uri, location)
